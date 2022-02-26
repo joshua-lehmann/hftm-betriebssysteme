@@ -15,16 +15,34 @@
     - [DHCP](#dhcp)
 
 ## Installation & Einrichtung Linux VM
-Als erstes habe ich mir VirtualBox heruntergeladen und gemäss Anleitung "Installation Linux Distro" eine neue Virtuelle Maschine erstellt. Dann habe ich die Ubuntu Iso heruntergeladen und installiert.
+Als erstes habe ich mir VirtualBox heruntergeladen und gemäss Anleitung ["Installation Linux Distro"](https://eight-chair-fec.notion.site/Installation-Linux-Distro-f9224eadcb124b35a61eebbbeeb98210) eine neue Virtuelle Maschine erstellt. Dann habe ich die Ubuntu Iso heruntergeladen und installiert. 
 
 ## SSH
-
-Als erstes habe ich das Port Forwarding in VirtualBox eingerichtet: 
+Bei der Linux Installation wurde bereits OpenSSH mitinstalliert auf der VM, wird müssen also nichts mehr installieren.
+Auf dem Host habe ich als erstes Port Forwarding in VirtualBox eingerichtet: 
 ![port-forwarding](images/PortForwarding.png)  
 Dann habe ich mich via PowerShell auf dem Host mit der VM verbunden: `ssh joshua@127.0.0.1 -p 5679`
 
 ### SSH Key
-Um mich in Zukunft ohne Passwort mit der VM Verbinden zu können habe ich ein SSH key eingerichtet. Dafür habe ich zuerst einen neuen ssh key in PowerShell mit dem Befehl `ssh-keygen` erstellt.
+Um mich in Zukunft ohne Passwort mit der VM Verbinden zu können habe ich ein SSH key eingerichtet. Dafür habe ich zuerst einen neuen ssh key in PowerShell mit dem Befehl `ssh-keygen` erstellt. Bei Windows wird dieser standardmässig in einem .ssh Ordner im user Profil abgelegt, bei mir also unter `"C:\Users\Joshua\.ssh\id_rsa.pub"`
+
+Da die Windows Implementation von OpenSSH leider den Command `ssh-copy-id` nicht unterstüzt, habe ich das File mit scp manuell auf die VM kopiert: `scp -P 5679 $env:USERPROFILE\.ssh\id_rsa.pub joshua@127.0.0.1:/home/joshua/windows10_rsa.pub` wichtig ist die Port Option hier mit grossem P zu verwenden, da -p der scp parameter für die preserves Option verwendet wird.
+
+Als nächstes habe ich dann auf der Linux VM das Verzeichnis .ssh und die Datei authorized_keys erstellt:
+`mkdir -p ~/.ssh` & `touch ~/.ssh/authorized_keys`
+Nun kopiere ich den Inhalt meines public keys in das authorized_keys file: `cat ~/windows10_rsa.pub >> ~/.ssh/authorized_keys`
+Nun kann ich mich verbinden ohne mein User Passwor einzugeben:
+![ssh-key-access](images/login-with-ssh-key.png)
+
+Da ich aus Sicherheitsgründen meinem private Key eine Passphrase gegeben habe muss ich diese eingeben, hätte ich aber ein key ohne Passphrase generiert könnte ich ohne jegliche Eingabe von Passwort eine ssh Verbindung auf die VM herstellen.
+
+Um die VM sicherer zu machen, kann man das Login via User Passwort ausschalten, so kann nur noch mit dem ssh-key zugegriffen werden, also auch nur von Servern/PC's welche einen korrekten private key haben zudem der public key auf der vm ist. Das ganze habe ich gemacht indem ich in der sshd_config Datei die Password Authentication disabeld habe:
+![disable-ssh-password](images/disable-ssh-password.png)
+
+Nun muss die Konfiguration noch neu geladen werden mit: `sudo systemctl reload ssh`
+
+Wenn ich nun versuche mich auf die VM zu verbinden und den private key nicht habe, erhalte ich Permission denied und es wird nicht nach dem Passwort gefragt, da dies disabeld ist. 
+![failed-pwd-login](images/failed-pwd-login.png)
 
 
 ## Docker
