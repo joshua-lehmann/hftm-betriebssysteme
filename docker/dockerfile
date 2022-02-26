@@ -1,0 +1,3 @@
+FROM hftmittelland/easyrest
+RUN echo "deb http://legacy.raspbian.org/raspbian/ wheezy main contrib non-free rpi" > /etc/apt/sources.list
+RUN  apt-get update && apt-get install -y nano && rm -fr /var/lib/apt/lists/*
