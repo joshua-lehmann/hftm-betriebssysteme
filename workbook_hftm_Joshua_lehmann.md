@@ -9,7 +9,7 @@
     - [Eigene images](#eigene-images)
     - [Docker Networks](#docker-networks)
       - [Eigene Netzwerke](#eigene-netzwerke)
-    - [Container Services veröffentlichen](#container-services-veröffentlichen)
+      - [Container Services veröffentlichen](#container-services-veröffentlichen)
   - [Networking](#networking)
     - [DNS](#dns)
     - [DHCP](#dhcp)
@@ -81,7 +81,7 @@ Falls wir einen Container ohne Netzwerkverbindung starten möchten, können wir 
 Bei laufenden Containern kann einfach das aktive Netzwerk mit dem disconnect befehl getrennt werden `docker network disconnect backend nginx1`.
 Dies kann hilfreich sein um Container welche Malware oder Sicherheitslücken haben vom Netzwerk zu isolieren.
 
-### Container Services veröffentlichen
+#### Container Services veröffentlichen
 Damit wir von aussen/via Host auf services welche auf unseren Container laufen zugreifen können müssen wir diese veröffentlichen. Am einfachsten geht dies mit dem host Netzwerktyp. Dieser veröffentlicht automatisch alle Ports des Containers auch auf dem Host, ohne diese manuell zu spezifizieren/freizugeben. Dies ist die einfachste Option, sollte aber nur verwendet werden, wenn nur sehr wenige Container auf dem Host verwendet werden. Da man schnell die Übersicht verliert und auch Sicherheitstechnisch keine Kontrolle hat welche Ports/Services nach aussen freigegeben sind. Auch kann ein Port dann nur einmal verwendet werden da es sonst Portkonflikte geben würde. Ein solcher Container kann via `sudo docker run --network=host --name nginx -d bitnami/nginx:latest` erstellt werden.
 
 Der bessere Weg welcher mehr Kontrolle bietet ist das spezifische veröffentlichen von Ports bei einem bridge network. So hat man die volle Kontrolle und eine gute Übersicht welche Ports man genau öffentlich zugänglich macht und welche nicht. Ausserdem kann man auch Ports mappen, also auf dem Host System einen anderen Port verwenden als der Container verwendet, um Port Konflikte zu vermeiden.
