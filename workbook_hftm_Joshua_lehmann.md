@@ -8,6 +8,13 @@
   - [Filesystem und LEMP](#filesystem-und-lemp)
     - [Disks auf unserer Ubuntu VM](#disks-auf-unserer-ubuntu-vm)
     - [Disk hinzufügen](#disk-hinzufügen)
+  - [Webserver](#webserver)
+    - [MERN](#mern)
+      - [MongoDB](#mongodb)
+    - [Node.js](#nodejs)
+    - [React.js](#reactjs)
+    - [Express.js](#expressjs)
+    - [Nginx](#nginx)
   - [Docker](#docker)
     - [Docker volumes](#docker-volumes)
     - [Eigene images](#eigene-images)
@@ -33,7 +40,7 @@ Dann habe ich mich via PowerShell auf dem Host mit der VM verbunden: `ssh joshua
 
 Um mich in Zukunft ohne Passwort mit der VM Verbinden zu können habe ich ein SSH key eingerichtet. Dafür habe ich zuerst einen neuen ssh key in PowerShell mit dem Befehl `ssh-keygen` erstellt. Bei Windows wird dieser standardmässig in einem .ssh Ordner im user Profil abgelegt, bei mir also unter `"C:\Users\Joshua\.ssh\id_rsa.pub"`
 
-Da die Windows Implementation von OpenSSH leider den Command `ssh-copy-id` nicht unterstüzt, habe ich das File mit scp manuell auf die VM kopiert: `scp -P 5679 $env:USERPROFILE\.ssh\id_rsa.pub joshua@127.0.0.1:/home/joshua/windows10_rsa.pub` wichtig ist die Port Option hier mit grossem P zu verwenden, da -p der scp parameter für die preserves Option verwendet wird.
+Da die Windows Implementation von OpenSSH leider den Command `ssh-copy-id` nicht unterstützt, habe ich das File mit scp manuell auf die VM kopiert: `scp -P 5679 $env:USERPROFILE\.ssh\id_rsa.pub joshua@127.0.0.1:/home/joshua/windows10_rsa.pub` wichtig ist die Port Option hier mit grossem P zu verwenden, da -p der scp parameter für die preserves Option verwendet wird.
 
 Als nächstes habe ich dann auf der Linux VM das Verzeichnis .ssh und die Datei authorized_keys erstellt:
 `mkdir -p ~/.ssh` & `touch ~/.ssh/authorized_keys`
@@ -45,7 +52,7 @@ Da ich aus Sicherheitsgründen meinem private Key eine Passphrase gegeben habe m
 
 ### SSH Key only Authentication
 
-Um die VM sicherer zu machen, kann man das Login via User Passwort ausschalten, so kann nur noch mit dem ssh-key zugegriffen werden, also auch nur von Servern/PC's welche einen korrekten private key haben zudem der public key auf der vm ist. Das ganze habe ich gemacht indem ich in der sshd_config Datei die Password Authentication disabeld habe:
+Um die VM sicherer zu machen, kann man das Login via User Passwort ausschalten, so kann nur noch mit dem ssh-key zugegriffen werden, also auch nur von Servern/PC's welche einen korrekten private key haben zudem der public key auf der vm ist. Das ganze habe ich gemacht indem ich in der sshd_config Datei die Password Authentication disabled habe:
 ![disable-ssh-password](images/disable-ssh-password.png)
 
 Nun muss die Konfiguration noch neu geladen werden mit: `sudo systemctl reload ssh`
@@ -58,7 +65,7 @@ Wenn ich nun versuche mich auf die VM zu verbinden und den private key nicht hab
 
 ### Disks auf unserer Ubuntu VM
 
-Ich habe mir mit `sudo fdisk -l` alle Disks anzeigen lassen. Insgesamt sind es 7 Disks, 6 "dev/loop" disks mit jeweiels 40-75Mib bytes und die Virtuelle Harddisk die beim erstellen der VM angelegt wurde mit 50GiB Speicher.
+Ich habe mir mit `sudo fdisk -l` alle Disks anzeigen lassen. Insgesamt sind es 7 Disks, 6 "dev/loop" disks mit jeweils 40-75Mib bytes und die Virtuelle Harddisk die beim erstellen der VM angelegt wurde mit 50GiB Speicher.
 
 Mit `sudo fsdisk -l | grep -i Disk` erhält nur die Informationen der ersten Zeile und die Liste wird übersichtlicher.
 
@@ -71,7 +78,7 @@ Disk /dev/loop5: 70.32 MiB, 73728000 bytes, 144000 sectors
 Disk /dev/sda: 50 GiB, 53687091200 bytes, 104857600 sectors
 ```
 
-Um die Partionen zu sehen habe ich den Befehl `lsblk` verwendet. Insgesamt sind hat unsere VM 12 Partionen, 6 für die loop Disk und 5 für unsere Harddisk und eine für die rom.
+Um die Partitionen zu sehen habe ich den Befehl `lsblk` verwendet. Insgesamt sind hat unsere VM 12 Partitionen, 6 für die loop Disk und 5 für unsere Harddisk und eine für die rom.
 
 ```
 NAME                      MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
@@ -151,6 +158,78 @@ Nun müssen die mounts refreshed werden: `sudo umount -a` und `sudo mount -a`
 
 Wurde alles korrekt gemacht kann mit `sudo mount -l` geprüft werden ob die neue Disk gemounted wurde: `/dev/mapper/vg_hftm-lv_hftm on /var/www type ext4 (rw,relatime)`
 
+## Webserver
+Es gibt verschiedene Webserver welche alle den Zweck erfüllen Webseiten auf einem server zu hosten und via Browser verfügbar zu machen. Die wohl bekanntesten sind Apache Webserver und Nginx. Ich hatte mit beiden schon Kontakt, in der Ausbildung mussten wir damals eine Webseite mit LAMP hosten und bei der Arbeit verwenden wir aktuell Nginx um unser React Frontend zu hosten. Es gibt sogenannte Web Stacks, also Kombinationen aus Softwaretools um eine Webseite oder Webapplikation zu hosten. Die bekanntesten wären wohl LAMP, LEMP, MEAN, XAMPP und WAMP. Eine gute Übersicht über die verschiedenen Stacks und deren Komponenten habe ich hier gefunden: https://geekflare.com/lamp-lemp-mean-xampp-stack-intro/ 
+
+### MERN
+Ich persönlich habe mich dazu entschieden einen MERN Stack + Nginx auf meiner VM aufzusetzen. Das bedeutet:  
+**M**ongoDB als Datenbank  
+**E**xpress.js als Backend Server Framework
+**R**eact.js als Frontend  
+**N**ode.js als Javascript runtime/server  
+Ich habe mich für MERN entschieden, weil es einerseits ein sehr moderner Stack ist und andererseits alle Komponenten in der selben Programmiersprache, nämlich JavaScript geschrieben werden, womit ich mich gut auskenne. Auch react.js und MongoDB kenne ich bereits. Aber ich habe noch nie selbst eine Webserver Umgebung mit Node/Express aufgesetzt. Und auch nginx habe ich bereits verwendet aber noch nie selbst installiert/konfiguriert. Deshalb möchte ich dies hier einmal durchführen und üben. Ich habe dazu folgende Anleitung verwendet: https://www.cloudbooklet.com/how-to-install-and-setup-mern-stack-with-nginx-on-ubuntu-20-04/  
+
+#### MongoDB
+Als erstes habe ich MongoDB installiert, dafür zuerst `sudo apt install gnupg` gnupg installiert damit ich den GPG key importieren kann und danach mit ` wget -qO - https://www.mongodb.org/static/pgp/server-4.4.asc | sudo apt-key add -` den Key importiert. Danach das MongoDB repository hinzugefügt: `echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/4.4 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-4.4.list` und als letztes noch MongoDB installiert: `sudo apt update` & `sudo apt-get install mongodb-org=4.4.8 mongodb-org-server=4.4.8 mongodb-org-shell=4.4.8 mongodb-org-mongos=4.4.8 mongodb-org-tools=4.4.8`   
+*Ich habe hier explizit die Version 4.4 verwendet, da ich die aktuellste Version 5 nicht zum laufen gebracht habe und auf [Stackoverflow](https://stackoverflow.com/questions/68742794/mongodb-failed-result-core-dump) zu meinem Fehler stand, dass diese Probleme mit virtuellen Maschinen hat.*  
+Nun müssen wir dafür sorgen das der MongoDB Dienst beim Systemstart immer gestartet wird: `sudo systemctl enable mongod` und ihn initial auch gleich starten `sudo service mongod start` und mit `sudo service mongod status` prüfen ober auch läuft. Erhalten wir den Status "active (running)" ist alles in Ordnung.
+
+Nun wollen wir MongoDB noch so konfigurieren, dass wir uns anmelden müssen und nicht jeder einfach die DB nutzen kann. Dazu müssen wir das config file editieren `sudo nano /etc/mongod.conf` und folgende Konfiguration hinzufügen: 
+```
+security:
+  authorization: enabled
+```
+Auch wichtig zu prüfen ist ob die Firewall aktiviert ist mit `sudo ufw status`, falls ja entweder deaktivieren oder den MongoDB Port 27017 als Ausnahme hinzufügen. In meinem Fall ist ufw bereits deaktiviert. Danach den Mongo Service Neustarten `sudo systemctl restart mongod`
+Nun wollen wir noch in der mongo shell einen Admin user für uns anlegen. Dazu gehen wir in die mongo shell `mongosh` und wechseln in die Admin DB `use admin` ind legen uns einen neuen User an: 
+```
+db.createUser({user: "admin" , pwd: passwordPrompt() , roles: [{ role: "userAdminAnyDatabase" , db: "admin"}]})
+```
+Nun können wir mit `mongo -u admin -p --authenticationDatabase admin` uns einloggen und haben weiterhin alle Rechte. Aber ohne User kann nun nicht mehr auf die DB zugegriffen werden.
+
+### Node.js
+node.js könnte über den standard packet manager installiert werden, dort ist aber nur die veraltete Version 10.19.0 verfügbar. Deshalb installiere ich node mit dem NVM (Node Version Manager). Dazu muss dieser installiert werden `curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash` und danach das nvm command geladen werden `source ~/.bashrc` nun können wir mit `nvm install v16.14.2` die aktuellste LTS Version installieren. Damit wird auch gleich der package manager NPM installiert.
+
+
+### React.js
+Wir können ganz einfach ein neues react Projekt erstellen mithilfe von npx und des globalen create-react-app scripts: `npx create-react-app demo` ich habe meins demo genannt. Wir müssen nun das Projekt noch builden, dafür gehen wir in den Projektordner und führen `npm run build` aus. Dies erstellt unsere statische Website für unser frontend. Diese Webseite werden wir später mit nginx verfügbar machen.
+
+### Express.js
+Auch für express können wir mit npx ein Projekt erstellen ` npx express-generator backend`. Ich habe meins backend genannt. Danach gehen wir wieder in den Ordner und laden die dependencies herunter `npm install -y`. Damit unser express server immer im Hintergrund läuft verwenden wir den Node Process Manager PM2. Diesen installieren wir mit npm `npm install pm2 -g` danach starten wir unseren server mit PM2 `pm2 start npm --name "backend" -- start`. Nun wollen wir noch das unser Server beim Startup gestartet wird, dafür nutzen wir `pm2 startup` welches uns einen Befehl ausgibt den wir ausführen können um das startup einzurichten und mit `pm2 save` speichern wir die Konfiguration anschliessend. Nun läuft unser Express server.
+
+### Nginx
+Als letztes installieren wir noch nginx `sudo apt install nginx`. Da wir die Firewall bereits geprüft/deaktiviert haben sollten wir hier keine Probleme haben.
+
+Ich habe die default config gelöscht und mir eine eigene erstellt `sudo nano /etc/nginx/sites-available/application.conf`
+```
+server {
+     listen [::]:8085;
+     listen 8085;
+
+     root /home/joshua/demo/build/;
+     index index.html;
+
+     location / {
+         try_files $uri $uri/ =404;
+     }
+
+     location /api/ {
+         proxy_pass http://127.0.0.1:3000/;
+         proxy_http_version 1.1;
+         proxy_set_header Connection '';
+         proxy_set_header Host $host;
+         proxy_set_header X-Forwarded-Proto $scheme;
+         proxy_set_header X-Real-IP $remote_addr;
+         proxy_set_header X-Forwarded-For $remote_addr;
+    }
+}
+```
+Mit dieser Config ist meine Demo React App via locahost:8085 verfügbar und der Express server via localhost:8085/api. 
+Bevor alles funktioniert musst aber noch ein symbolic link erstellt werden `sudo ln -s /etc/nginx/sites-available/application.conf /etc/nginx/sites-enabled/application.conf` und der nginx neugestartet werden `sudo service nginx restart`.
+Danach richten wir noch ein port-forwarding auf unsere VirtualBox ein:  
+!["port-forwarding-nginx"](images/port-forwarding-nginx.png)
+Nun sollten wir von unserem Host sowohl die react app als auch Express ansteuern können:  
+!["react-app](images/react-app.png) !["express-server"](images/express-server.png)
+
 ## Docker
 
 Ich habe Docker Desktop auf meinem Windows PC heruntergeladen und installiert.
@@ -159,6 +238,7 @@ Danach habe ich via Terminal gemäss Anleitung einen Container für das easyrest
 Um einen zweiten Container mit demselben Image zu erstellen und auf Port 8090 verfügbar zu machen, habe ich folgenden Befehl verwendet:  
 `docker run --name easyrest2 -p 8090:8080 -d hftmittelland/easyrest`  
 Mit `docker exec -i -t easyrest2 bash` und dann `cat /config/config.xml` kann ich sehen das auf dem zweiten Container die andere Config die ich via Post request erstellt habe ist:
+
 
 ```
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
