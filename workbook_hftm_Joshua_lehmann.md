@@ -11,10 +11,10 @@
   - [Webserver](#webserver)
     - [MERN](#mern)
       - [MongoDB](#mongodb)
-    - [Node.js](#nodejs)
-    - [React.js](#reactjs)
-    - [Express.js](#expressjs)
-    - [Nginx](#nginx)
+      - [Node.js](#nodejs)
+      - [React.js](#reactjs)
+      - [Express.js](#expressjs)
+      - [Nginx](#nginx)
   - [Docker](#docker)
     - [Docker volumes](#docker-volumes)
     - [Eigene images](#eigene-images)
@@ -186,17 +186,17 @@ db.createUser({user: "admin" , pwd: passwordPrompt() , roles: [{ role: "userAdmi
 ```
 Nun können wir mit `mongo -u admin -p --authenticationDatabase admin` uns einloggen und haben weiterhin alle Rechte. Aber ohne User kann nun nicht mehr auf die DB zugegriffen werden.
 
-### Node.js
+#### Node.js
 node.js könnte über den standard packet manager installiert werden, dort ist aber nur die veraltete Version 10.19.0 verfügbar. Deshalb installiere ich node mit dem NVM (Node Version Manager). Dazu muss dieser installiert werden `curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash` und danach das nvm command geladen werden `source ~/.bashrc` nun können wir mit `nvm install v16.14.2` die aktuellste LTS Version installieren. Damit wird auch gleich der package manager NPM installiert.
 
 
-### React.js
+#### React.js
 Wir können ganz einfach ein neues react Projekt erstellen mithilfe von npx und des globalen create-react-app scripts: `npx create-react-app demo` ich habe meins demo genannt. Wir müssen nun das Projekt noch builden, dafür gehen wir in den Projektordner und führen `npm run build` aus. Dies erstellt unsere statische Website für unser frontend. Diese Webseite werden wir später mit nginx verfügbar machen.
 
-### Express.js
+#### Express.js
 Auch für express können wir mit npx ein Projekt erstellen ` npx express-generator backend`. Ich habe meins backend genannt. Danach gehen wir wieder in den Ordner und laden die dependencies herunter `npm install -y`. Damit unser express server immer im Hintergrund läuft verwenden wir den Node Process Manager PM2. Diesen installieren wir mit npm `npm install pm2 -g` danach starten wir unseren server mit PM2 `pm2 start npm --name "backend" -- start`. Nun wollen wir noch das unser Server beim Startup gestartet wird, dafür nutzen wir `pm2 startup` welches uns einen Befehl ausgibt den wir ausführen können um das startup einzurichten und mit `pm2 save` speichern wir die Konfiguration anschliessend. Nun läuft unser Express server.
 
-### Nginx
+#### Nginx
 Als letztes installieren wir noch nginx `sudo apt install nginx`. Da wir die Firewall bereits geprüft/deaktiviert haben sollten wir hier keine Probleme haben.
 
 Ich habe die default config gelöscht und mir eine eigene erstellt `sudo nano /etc/nginx/sites-available/application.conf`
