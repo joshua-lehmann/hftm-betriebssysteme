@@ -17,6 +17,8 @@
       - [Nginx](#nginx)
   - [Permissions](#permissions)
     - [Permissions ändern](#permissions-ändern)
+    - [Aufgabe - User & Permission Management](#aufgabe---user--permission-management)
+  - [Bash Script](#bash-script)
   - [Package Management](#package-management)
     - [Repositories hinzufügen und Packages installieren](#repositories-hinzufügen-und-packages-installieren)
     - [Anzahl Packages in einem Repo](#anzahl-packages-in-einem-repo)
@@ -277,6 +279,143 @@ r-------- 400 Read permission for the owner. No permission for anybody else.
 Der command um die Permissons zu ändern ist `chmod [options] [mode[,mode...]] filename` Er kann entweder mit den Octal zahlen verwendet werden `chmod 764 myfile.txt` oder mit den symbolic Argumenten: `chmod a+x bigprogram` , `chmod ug=rw report.tex` wobei der symbolic mode folgende Syntax verwendet: `chmod who operator permission filename` welcher in folgender Tabelle erläutert ist:
 !["symbolic-arguments"](images/symbolic-permission-arguments.png)
 sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 
+
+### Aufgabe - User & Permission Management
+Folgende Aufgabe ist gegeben:
+
+Erstellen Sie folgende User und Gruppen mit folgenden Zugehörigkeiten
+Gruppen:
+- Technik
+- Verkauf
+- HR
+- Projekt
+- Firma (dies ist die Default Gruppe für alle User)  
+
+User:
+- Hans => Gruppe: Technik
+- Peter => Gruppe: Verkauf
+- Alfred => Gruppe: Verkauf
+- Georg => Gruppe: HR, Projekt
+- Markus => Gruppe: HR
+- Albert=> Gruppe: Projekt
+- Christine => Gruppe: Technik, Projekt
+- Beate => Gruppe: Technik, Verkauf, HR, Projekt  
+
+Erstellen Sie folgende Ordnerstruktur:  
+![folders](images/folders.png)  
+Legen Sie folgende Verzeichnisberechtigungen fest:
+- Grundsätzlich gilt das Prinzip «least Privileges» (keine Berechtigungen, wenn nicht explizit vergeben)
+- Jeder Ordner gehört dem Benutzer «root». Er hat Vollzugriff auf jeden Ordner.
+- Jede Gruppe hat Vollzugriff und ist Owner des gleichbenannten Ordners.
+- Sorgen Sie dafür, dass der Account von User Hans automatisch nach 5 Tagen gesperrt wird nachdem sein Passwort abgelaufen ist.
+- Der Benutzer Markus hat zusätzlich noch Lese-Berechtigungen auf den Ordner «verkauf».
+Alle Benutzer können Dateien im Ordner «temp» erstellen. Die Benutzer dürfen aber nur ihre eigenen Dateien wieder löschen. Sie haben keine - Löschberechtigung für Dateien von anderen Benutzern.
+- Die Gruppe vom Ordner «Technik», sollen automatisch an alle neu erstellten Unterordner und Dateien (unterhalb dieses Ordners) vererbt werden.
+- Testen Sie die Berechtigungen indem Sie sich mit unterschiedlichen Benutzern einloggen und die Zugriffsberechtigungen verifizieren.
+
+
+Ich habe mich dazu entschieden das ganze mit einem Skript zu lösen, da ich so am einfachsten meine Schritte festhalten und dokumentieren kann. Dafür habe ich die einzelnen Schritte direkt im Terminal ausprobiert und dann sauber in einem Skript zusammengefügt:
+[manage-permissions.sh](manage-permissions.sh)
+
+Das Skript generiert folgenden Output:
+```
+Created group: technik
+Created group: verkauf
+Created group: hr
+Created group: projekt
+Created group: firma
+Created user: hans with password test123
+Created user: peter with password test123
+Created user: alfred with password test123
+Created user: georg with password test123
+Created user: markus with password test123
+Created user: albert with password test123
+Created user: christine with password test123
+Created user: beate with password test123
+total 4
+drwxr-sr-x 2 root technik 4096 Apr  3 14:26 subfolder
+# file: hftm/verkauf
+# owner: root
+# group: verkauf
+user::rwx
+user:markus:rwx
+group::rwx
+mask::rwx
+other::---
+
+hftm:
+total 24
+drwxrwx---  2 root firma   4096 Apr  3 14:26 firma
+drwxrwx---  2 root hr      4096 Apr  3 14:26 hr
+drwxrwx---  5 root projekt 4096 Apr  3 14:26 projekt
+drwxrws---  3 root technik 4096 Apr  3 14:26 technik
+drwxrwxrwt  2 root firma   4096 Apr  3 14:26 temp
+drwxrwx---+ 2 root verkauf 4096 Apr  3 14:26 verkauf
+
+hftm/firma:
+total 0
+
+hftm/hr:
+total 0
+
+hftm/projekt:
+total 12
+drwxrwxr-x 2 root projekt 4096 Apr  3 14:26 diverses
+drwxrwxr-x 2 root projekt 4096 Apr  3 14:26 dokumentation
+drwxrwxr-x 2 root projekt 4096 Apr  3 14:26 vertrag
+
+hftm/projekt/diverses:
+total 0
+
+hftm/projekt/dokumentation:
+total 0
+
+hftm/projekt/vertrag:
+total 0
+
+hftm/technik:
+total 4
+drwxr-sr-x 2 root technik 4096 Apr  3 14:26 subfolder
+
+hftm/technik/subfolder:
+total 0
+
+hftm/temp:
+total 0
+
+hftm/verkauf:
+total 0
+
+Last password change                                    : Apr 03, 2022
+Password expires                                        : Apr 13, 2022
+Password inactive                                       : Apr 18, 2022
+Account expires                                         : never
+Minimum number of days between password change          : 0
+Maximum number of days between password change          : 10
+Number of days of warning before password expires       : 7
+```
+
+**Tests**
+Um das temp verzechnis zu testen:
+```
+$ whoami
+hans
+$ touch hftm/temp/hans.txt
+$ ls hftm/temp
+hans.txt
+$ su joshua
+Password:
+joshua@ubuntu-server:~/test$ rm hftm/temp/hans.txt
+rm: remove write-protected regular empty file 'hftm/temp/hans.txt'? y
+rm: cannot remove 'hftm/temp/hans.txt': Operation not permitted
+joshua@ubuntu-server:~/test$ su hans
+Password:
+$ rm hftm/temp/hans.txt
+$ ls hftm/temp
+
+```
+
+## Bash Script
 
 ## Package Management
 ### Repositories hinzufügen und Packages installieren
