@@ -15,6 +15,16 @@
       - [React.js](#reactjs)
       - [Express.js](#expressjs)
       - [Nginx](#nginx)
+  - [Permissions](#permissions)
+    - [Permissions ändern](#permissions-ändern)
+  - [Package Management](#package-management)
+    - [Repositories hinzufügen und Packages installieren](#repositories-hinzufügen-und-packages-installieren)
+    - [Anzahl Packages in einem Repo](#anzahl-packages-in-einem-repo)
+    - [APT & Snap](#apt--snap)
+      - [APT](#apt)
+      - [Snap](#snap)
+      - [APT vs Snap](#apt-vs-snap)
+      - [Use-Cases](#use-cases)
   - [Docker](#docker)
     - [Docker volumes](#docker-volumes)
     - [Eigene images](#eigene-images)
@@ -228,7 +238,106 @@ Bevor alles funktioniert musst aber noch ein symbolic link erstellt werden `sudo
 Danach richten wir noch ein port-forwarding auf unsere VirtualBox ein:  
 !["port-forwarding-nginx"](images/port-forwarding-nginx.png)
 Nun sollten wir von unserem Host sowohl die react app als auch Express ansteuern können:  
-!["react-app](images/react-app.png) !["express-server"](images/express-server.png)
+!["react-app"](images/react-app.png) !["express-server"](images/express-server.png)
+
+## Permissions 
+In Linux ist jeder Datei und jedem Ordner ein Owner und eine Gruppe zugewiesen. Um diese zu sehen kann der Befehl `ls -l` verwendet werden.
+```
+joshua@ubuntu-server:~$ ls -l
+total 12
+-rw-rw-r-- 1 joshua joshua 3817 Jan  5 07:23 gpg
+-rw-rw-r-- 1 joshua joshua  571 Feb 19 12:43 id_rsa.pub
+-rw-rw-r-- 1 joshua joshua  571 Feb 26 11:52 windows10_rsa.pub
+```
+
+Jede Datei/Ordner hat dann entsprechende Berechtigungen, diese werden unterschieden für den Owner (user), die Gruppe und alle anderen:
+!["Permission String"](images/permissionstring.png)
+
+Die Permissions werden entweder mit den Buchstaben r = read, w = write und x = execute angezeigt oder mit einer Zahl im Ocatal System. Dann werden 3 Zahlen angeben, im folgenden Format 764 (Owner, Gruppe, Other) wobei die Zahl aus folgenden Berechtigungen addiert wird:
+```
+1: execute permission
+2: write permission
+4: read permission
+```
+
+Beispiele von oft verwendeten Kombinationen:
+
+```
+rwxrwxrwx 777 Read, write, and execute permissions for all users.
+rwxr-xr-x 755 Read and execute permission for all users. The file’s owner also has write permission.
+rwx------ 700 Read, write, and execute permissions for the file’s owner only; all others have no access.
+rw-rw-rw- 666 Read and write permissions for all users. No execute permissions for anybody.
+rw-r--r-- 644 Read and write permissions for the owner. Read-only permission for all others.
+rw-r----- 640 Read and write permissions for the owner, and read-only permission for the group. No permission for others.
+rw------- 600 Read and write permissions for the owner. No permission for anybody else.
+r-------- 400 Read permission for the owner. No permission for anybody else.
+```
+
+### Permissions ändern
+Der command um die Permissons zu ändern ist `chmod [options] [mode[,mode...]] filename` Er kann entweder mit den Octal zahlen verwendet werden `chmod 764 myfile.txt` oder mit den symbolic Argumenten: `chmod a+x bigprogram` , `chmod ug=rw report.tex` wobei der symbolic mode folgende Syntax verwendet: `chmod who operator permission filename` welcher in folgender Tabelle erläutert ist:
+!["symbolic-arguments"](images/symbolic-permission-arguments.png)
+sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 
+
+## Package Management
+### Repositories hinzufügen und Packages installieren
+Um ein neues Repository hinzufügen muss zuerst der public key importiert werden. Da wir in unserem Fall für MongoDb den key in einer Datei auf einem Server haben, müssen wir diese downloaden und den Inhalt der Datei dem apt-key add command übergeben: `wget -qO - https://www.mongodb.org/static/pgp/server-5.0.asc | sudo apt-key add -` Wir können mit `apt-key list` prüfen ob unser Key erfolgreich hinzugefügt wurde.
+Als nächstes kann das offizielle MongoDB Repository hinzugefügt werden: `sudo add-apt-repository 'deb [arch=amd64] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse'`
+Dadurch wird das neue repository der sources.list Datei hinzugefügt und wir können nun Pakete vom neuen Repo installieren. Es empfiehlt sich nach dem hinzufügen eines neuen Repos die package list zu updaten `sudo apt update`. Danach können wir MongoDB installieren: `sudo apt install mongodb-org` Damit der Mongo service auch immer nach dem Neustart läuft registrieren wir diesen `sudo systemctl enable mongod`. Nun starten wir den service manuell mit `sudo service mongod start` und prüfen mit `systemctl status mongod` ob er nun läuft. Ausserdem erhalten wir weitere Infos:
+```
+● mongod.service - MongoDB Database Server
+     Loaded: loaded (/lib/systemd/system/mongod.service; disabled; vendor preset: enabled)
+     Active: active (running) since Sat 2022-04-02 14:26:12 UTC; 6s ago
+       Docs: https://docs.mongodb.org/manual
+   Main PID: 4883 (mongod)
+     Memory: 48.9M
+     CGroup: /system.slice/mongod.service
+             └─4883 /usr/bin/mongod --config /etc/mongod.conf
+```
+Mithilfe von grep können wir uns spezifische Infos wie die Process ID anschauen `systemctl status mongod | grep PID`   
+`Main PID: 4883 (mongod)`
+
+### Anzahl Packages in einem Repo
+Um die Anzahl Packages herauszufinden können wir den Inhalt der lists Datei durchsuchen. Dazu müssen wir als erstes den genauen Namen des Packages herausfinden, dies können wir mit `ls /var/lib/apt/lists/*_Packages | grep mongo` Dies gibt uns den genauen Dateinamen für die Lists Datei des MongoDB repos: `/var/lib/apt/lists/repo.mongodb.org_apt_ubuntu_dists_focal_mongodb-org_5.0_multiverse_binary-amd64_Packages` Nun können wir mithilfe von Grep und einer Kette von Formatierungsbefehlen uns alle Packages des Repos ausgeben: `grep ^Package /var/lib/apt/lists/repo.mongodb.org_apt_ubuntu_dists_focal_mongodb-org_5.0_multiverse_binary-amd64_Packages | awk '{print $2}' | sort -u` Zuerst holen wir mit `grep ^Package` alle Zeilen die mit Package beginnen. Mit dem `awk '{print $2}'` Befehl erhalten wir die zweite Spalte welche den Packagename enthält und mit `sort -u` sortieren wir die Pakete und entfernen Duplikate.
+Wir erhalten folgenden Output: 
+```
+mongocli
+mongodb-atlas-cli
+mongodb-database-tools
+mongodb-mongosh
+mongodb-org
+mongodb-org-database
+mongodb-org-database-tools-extra
+mongodb-org-mongos
+mongodb-org-server
+mongodb-org-shell
+mongodb-org-tools
+```
+Nun können wir die Pakete manuell zählen oder mit `| wc -l` uns direkt die Anzahl Zeilen ausgeben.
+
+### APT & Snap
+#### APT
+Apt (Advanced Package Tool) ist ein software package manger um Pakete auf Debian Systemen zu verwalten. Es automatisiert den Prozess vom herunterladen, konfigurieren, installieren, updaten und entfernen von Paketen. APT ist ein "frontend" für basis package management system dpkg von Debian. Es wir hauptsächlich das apt Kommando verwendet, bspw. `sudo apt install docker` um docker zu installieren. APT lädt das Paket herunter und auch dessen benötige Abhängigkeiten (dependencies) sofern diese nicht bereits auf dem System installiert sind, dann können sie wiederverwendet werden.
+
+#### Snap
+Snap ist ein software package und deployment System welches in sich geschlossene (self-contained) Pakete verwendet. Das bedeutet das alles was benötigt wird um das Programm auszuführen in einem packet vorhanden ist. So kann es auf jeder Platform die Snap unterstützt ausgeführt werden. Snap verwendet hauptsächlich das snap Kommando. Bspw. `sudo snap install thunderbird` um thunderbird zu installieren.
+
+#### APT vs Snap
+**Vorteile von APT**
+- Kleinere Pakete (da sie nicht alle dependencies mitliefern müssen)
+- apt kann dependencies wiederverwenden und so Speicher und Download Geschwindigkeit sparen
+- Bei apt Paketen kann man selbst entscheiden wann und ob man updated, man hat also die volle Kontrolle
+
+**Vorteile von Snap**
+- Da snaps alles in einem bundle enthalten was man benötigt kann dies immer ausgeführt werden und man benötigt keine zusätzlichen dependencies die zu Problemen führen könnten
+- snaps updaten sich voll automatisch, heisst man hat immer die aktuellste Version
+- snap isoliert Programme, es werden also keine Abhängigkeiten benötigt und der snap läuft genau so wie der Entwickler in gebundeld hat.
+- Es ist möglich gleichzeitig verschiedene Versionen von dem selben Programm parallel zu installieren
+
+#### Use-Cases
+Snap kann verwendet werden um Programme zu isolieren und beispielsweise mehrere Versionen eines Programms parallel zu testen. Möchte man also beispielsweise ein Programm installieren das immer auf dem aktuellsten Stand sein soll und unabhängig und isoliert funktionieren soll und man die Möglichkeit haben möchte es komplett zu deinstallieren, sollte man snap verwenden.
+
+apt wird für die meisten Pakete verwendet, da so Speicherplatz gespart werden kann (da die dependencies geteilt werden) und man auch mehr Kontrolle über die updates und Version hat.
+Möchte man also beispielsweise eine bestimmte Version eines Paketes installieren welches viele Abhängigkeiten hat sollte man apt verweben.
 
 ## Docker
 
