@@ -19,6 +19,7 @@
     - [Permissions ändern](#permissions-ändern)
     - [Aufgabe - User & Permission Management](#aufgabe---user--permission-management)
   - [Bash Script](#bash-script)
+    - [Bash Script mit dynamischen Input um User hinzuzufügen](#bash-script-mit-dynamischen-input-um-user-hinzuzufügen)
   - [Package Management](#package-management)
     - [Repositories hinzufügen und Packages installieren](#repositories-hinzufügen-und-packages-installieren)
     - [Anzahl Packages in einem Repo](#anzahl-packages-in-einem-repo)
@@ -416,6 +417,78 @@ $ ls hftm/temp
 ```
 
 ## Bash Script
+Die Aufgabe war folgende:
+Schreibe ein Bash script welches als Input entweder ein File nimmt oder den User abfragt. Es soll folgendes geschehen:
+ - User erstellen
+ - User in *sudo* Gruppe hinzufügen
+ - Gruppe *microsoft* erstellen falls noch nicht vorhanden und als default Gruppe für den User hinzufügen.
+
+
+### Bash Script mit dynamischen Input um User hinzuzufügen
+Ich habe das ganze mit dem script [create-user.sh](create-user.sh) gelöst.
+```bash
+#!/bin/bash
+
+# If the group "microsoft" does not exists, create it
+getent group microsoft || sudo groupadd microsoft
+
+createUser() {
+    # Crete new user with group microsoft and add him to sudo group as well
+    sudo useradd -g microsoft $1
+    sudo usermod -a -G sudo $1
+    echo "Created user: $1 with primary group microsoft and secondary group sudo"
+}
+
+# Check if argument is filename or user list as string
+while getopts f:u: flag; do
+    case "${flag}" in
+    u)
+        usernames=${OPTARG}
+        for user in $usernames; do
+            createUser "$user"
+        done
+        ;;
+    f)
+        file=${OPTARG}
+        while IFS= read -r line; do
+            createUser "$line"
+        done <"$file"
+        ;;
+    esac
+done
+```
+
+Das Skript ermöglicht es mit der `-u` Option entweder einen String mit mehreren Usern (leerzeichen getrennt) anzugeben oder mit `-f` einen Dateinamen welcher die Usernamen enthält. Die User werden dann der Funktion createUser übergeben welche die User erstellt und der sudo Gruppe hinzufügt. 
+Hier nun jeweils ein Beispiel für beide Optionen:
+```
+joshua@PC-Joshua:~$ ./test.sh -u "alex hans sarah"
+[sudo] password for joshua: 
+Created user: alex with primary group microsoft and secondary group sudo
+Created user: hans with primary group microsoft and secondary group sudo
+Created user: sarah with primary group microsoft and secondary group sudo
+joshua@PC-Joshua:~$ groups alex
+alex : microsoft sudo
+```
+
+`users.txt`:
+```
+max
+lara
+moritz
+```
+
+```
+joshua@PC-Joshua:~$ ./test.sh -f users.txt
+microsoft:x:1002:
+Created user: max with primary group microsoft and secondary group sudo
+Created user: lara with primary group microsoft and secondary group sudo
+Created user: moritz with primary group microsoft and secondary group sudo
+joshua@PC-Joshua:~$ groups lara
+lara : microsoft sudo
+```
+
+
+Hinweis: Beim zweiten mal wurden die Infos der microsoft Gruppe ausgegeben, da sie bereits existiert. Beim ersten mal ausführen hat sie noch nicht existiert und wurde erstellt.
 
 ## Package Management
 ### Repositories hinzufügen und Packages installieren
